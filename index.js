@@ -33,7 +33,6 @@ var sendData005y;
 var alaram=""; // 알람을 담을 그릇
 
 var intervalmessage; // 클라이언트 주기버튼 메시지를 담을 변수
-var standardData;
 
 var rangedata = new Array(5);
 var ruledata = new Array(10);
@@ -46,6 +45,8 @@ var reccount=0;
 var fuck1,fuck2,fuck3,fuck4,fuck5;
 var suck1,suck2,suck3,suck4,suck5;
 var duck1,duck2,duck3,duck4,duck5;
+var chuck1=0;
+var hook1;
 
 var dbprevData = new Array(20); //역순으로 데이터를 찾기에 순서를 바꿔줄 그릇
 
@@ -247,8 +248,10 @@ var server = net.createServer(function (socket2) {
   suck3=0;
   suck4=0;
   suck5=0;
+
       socket.on('standardData',function(){
-        console.log("여기냐");
+
+        console.log("세팅시 데이터 보내기");
         if(rule_001.psrule001x==undefined){
           rule_001.psrule001x=90;
         }
@@ -376,6 +379,7 @@ var server = net.createServer(function (socket2) {
             if(rule_005.psrule005y.length==3){
               sendData005y=rule_005.psrule005y;
             }
+            console.log("이양반아 "+sendData001x);
       socket2.write("a"+
 
       sendData001x+"x"+sendData001y+"x"+rangedata[0]+"x"+
@@ -392,7 +396,7 @@ var server = net.createServer(function (socket2) {
         fuck1=1;
 	suck1=1;
 	duck1=1;
-	socket.disconnect();
+	//socket.disconnect();
     });
     socket.on('std2',function () {
         socket2.write('std');
@@ -664,8 +668,8 @@ rcinterval = d016;
 
 if(data){
 ////
+
   if(fuck1==1){
-    chuck=1;
     var stnum1=1*rcrule[0];
     var log1 = new rule001({
       rule001x:pig[0],
@@ -676,6 +680,8 @@ if(data){
     });
     //console.log("1 번"+log1);
     log1.save(function (err,log1) {
+      console.log(log1);
+      hook1=1;
     });
     io.emit('luck1');
 	fuck1=0;
@@ -743,38 +749,39 @@ if(data){
 
 
 //디바이스에서 보낸 데이터(주기,민감도)가 다를 경우
+if(fuck1==1||fuck2==1||fuck3==1||fuck4==1||fuck5==1){
 if(rcrule[0]!=rangedata[0]||rcrule[1]!=rangedata[1]||rcrule[2]!=rangedata[2]||rcrule[3]!=rangedata[3]||rcrule[4]!=rangedata[4]||rcinterval!=intervalmessage){
-  console.log('다르대');
-  //console.log(rule_001.psrule001x.length);
-  if(rule_001.psrule001x==undefined){
+  console.log("디바이스 에서 보낸 데이터 가 달라");
+  console.log("봐봐: "+rule_001.psrule001x);
+  if(rule_001.psrule001x===undefined){
     rule_001.psrule001x=90;
   }
-  if(rule_002.psrule002x==undefined){
+  if(rule_002.psrule002x===undefined){
     rule_002.psrule002x=90;
   }
-  if(rule_003.psrule003x==undefined){
+  if(rule_003.psrule003x===undefined){
     rule_003.psrule003x=90;
   }
-  if(rule_004.psrule004x==undefined){
+  if(rule_004.psrule004x===undefined){
     rule_004.psrule004x=90;
   }
-  if(rule_005.psrule005x==undefined){
+  if(rule_005.psrule005x===undefined){
     rule_005.psrule005x=90;
   }
 
-  if(rule_001.psrule001y==undefined){
+  if(rule_001.psrule001y===undefined){
     rule_001.psrule001y=90;
   }
-  if(rule_002.psrule002y==undefined){
+  if(rule_002.psrule002y===undefined){
     rule_002.psrule002y=90;
   }
-  if(rule_003.psrule003y==undefined){
+  if(rule_003.psrule003y===undefined){
     rule_003.psrule003y=90;
   }
-  if(rule_004.psrule004y==undefined){
+  if(rule_004.psrule004y===undefined){
     rule_004.psrule004y=90;
   }
-  if(rule_005.psrule005y==undefined){
+  if(rule_005.psrule005y===undefined){
     rule_005.psrule005y=90;
   }
 
@@ -887,7 +894,7 @@ socket2.write("a"+
 
 }
 
-
+}
 
 /** 데이터 확인 로그 **/
 
@@ -1188,7 +1195,7 @@ server.listen(11111,function () {
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ DB 관련 start @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 //##################### DB 연결 ########################
-mongoose.connect("mongodb://127.0.0.1:27017");
+mongoose.connect("mongodb://test:test@ds023664.mlab.com:23664/roadtest");
 var db = mongoose.connection;
 db.once("open",function () {
   console.log("DB connected");
@@ -1354,7 +1361,7 @@ app.post('/input1',function (req,res) {
     range001:rangedata[0]
   });
   log1.save(function (err,log1) {
-    console.log(log1);
+    //console.log("봐봐 input 이야 :"+log1);
   });
 
   if(rangedata[0]<10){
@@ -1366,6 +1373,7 @@ app.post('/input1',function (req,res) {
   if(suck1!=1){
   io.emit('email1');
 	}
+
   duck1=0;
   res.redirect('/input');
 });
