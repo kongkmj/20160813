@@ -150,7 +150,7 @@ $('#interval5').click(function () {
 
 
 socket.on('news',function (alaram,dbprevData) {
-console.log(dbprevData[19]);
+//console.log(dbprevData[19]);
   for(var i=0;i<20;i++){
     //roll
     config1.data.labels[i]=(dbprevData[i].rectime);
@@ -217,11 +217,8 @@ console.log(dbprevData[19]);
 })
 
 
-socket.on('chat message',function (pig,alaram,recieveArray) {
-
-console.log(recieveArray);
-
-
+socket.on('chat message',function (tcp_R_Data,alaram) {
+//console.log(tcp_R_Data);
 
   if(alaram!=""){
     alert_cnt=1;
@@ -266,19 +263,19 @@ console.log(recieveArray);
               config1.data.datasets[2].data.shift(0,20);
               config1.data.datasets[3].data.shift(0,20);
               config1.data.datasets[4].data.shift(0,20);
-              config1.data.datasets[0].data.push(pig[0]-settingdata1x);
-              config1.data.datasets[1].data.push(pig[2]-settingdata2x);
-              config1.data.datasets[2].data.push(pig[4]-settingdata3x);
-              config1.data.datasets[3].data.push(pig[6]-settingdata4x);
-              config1.data.datasets[4].data.push(pig[8]-settingdata5x);
+              config1.data.datasets[0].data.push(tcp_R_Data[0]-settingdata1x);
+              config1.data.datasets[1].data.push(tcp_R_Data[3]-settingdata2x);
+              config1.data.datasets[2].data.push(tcp_R_Data[6]-settingdata3x);
+              config1.data.datasets[3].data.push(tcp_R_Data[9]-settingdata4x);
+              config1.data.datasets[4].data.push(tcp_R_Data[12]-settingdata5x);
 
             }
             else{
-              config1.data.datasets[0].data.push(pig[0]-settingdata1x);
-              config1.data.datasets[1].data.push(pig[2]-settingdata2x);
-              config1.data.datasets[2].data.push(pig[4]-settingdata3x);
-              config1.data.datasets[3].data.push(pig[6]-settingdata4x);
-              config1.data.datasets[4].data.push(pig[8]-settingdata5x);
+              config1.data.datasets[0].data.push(tcp_R_Data[0]-settingdata1x);
+              config1.data.datasets[1].data.push(tcp_R_Data[3]-settingdata2x);
+              config1.data.datasets[2].data.push(tcp_R_Data[6]-settingdata3x);
+              config1.data.datasets[3].data.push(tcp_R_Data[9]-settingdata4x);
+              config1.data.datasets[4].data.push(tcp_R_Data[12]-settingdata5x);
 
           }
             window.myLine1.update();
@@ -299,19 +296,19 @@ console.log(recieveArray);
                     config2.data.datasets[2].data.shift(0,20);
                     config2.data.datasets[3].data.shift(0,20);
                     config2.data.datasets[4].data.shift(0,20);
-                    config2.data.datasets[0].data.push(pig[1]-settingdata1y);
-                    config2.data.datasets[1].data.push(pig[3]-settingdata2y);
-                    config2.data.datasets[2].data.push(pig[5]-settingdata3y);
-                    config2.data.datasets[3].data.push(pig[7]-settingdata4y);
-                    config2.data.datasets[4].data.push(pig[9]-settingdata5y);
+                    config2.data.datasets[0].data.push(tcp_R_Data[1]-settingdata1y);
+                    config2.data.datasets[1].data.push(tcp_R_Data[4]-settingdata2y);
+                    config2.data.datasets[2].data.push(tcp_R_Data[7]-settingdata3y);
+                    config2.data.datasets[3].data.push(tcp_R_Data[10]-settingdata4y);
+                    config2.data.datasets[4].data.push(tcp_R_Data[13]-settingdata5y);
 
                   }
                   else{
-                    config2.data.datasets[0].data.push(pig[1]-settingdata1y);
-                    config2.data.datasets[1].data.push(pig[3]-settingdata2y);
-                    config2.data.datasets[2].data.push(pig[5]-settingdata3y);
-                    config2.data.datasets[3].data.push(pig[7]-settingdata4y);
-                    config2.data.datasets[4].data.push(pig[9]-settingdata5y);
+                    config2.data.datasets[0].data.push(tcp_R_Data[1]-settingdata1y);
+                    config2.data.datasets[1].data.push(tcp_R_Data[4]-settingdata2y);
+                    config2.data.datasets[2].data.push(tcp_R_Data[7]-settingdata3y);
+                    config2.data.datasets[3].data.push(tcp_R_Data[10]-settingdata4y);
+                    config2.data.datasets[4].data.push(tcp_R_Data[13]-settingdata5y);
 
                 }
                   window.myLine2.update();

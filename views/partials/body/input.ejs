@@ -19,8 +19,6 @@
 <script src="/socket.io/socket.io.js"></script>
 
 
-
-
 <form id="standardform1" name="standardform1" method="POST" action="/input1">
 <h5>세팅:
 <input type ="button"  id="ruleid1" name="ruleid1" value="적용" onclick="stsubmit1()"/>
@@ -28,30 +26,22 @@
 <i class=" fa fa-long-arrow-right"></i>
 <script>
 var socket = io.connect("http://localhost");
-var test1 =false;
 function stsubmit1() {
-    socket.emit('std1');
+  socket.emit('std1');
 }
 
 socket.on('luck1',function () {
-
-  //socket.emit('standardData');
-  console.log('2');
-  test1=true;
-  if(test1){
-    console.log('3');
     standardform1.submit();
-  }
-})
+});
 
 </script>
 </form>
 
 <% if(data_1.rule001x!=undefined) {%>
-<%= 'X = '+ (data_1.rule001x) %>
+<%= 'X = '+ (data_1.rule001x-90) %>
 <%}%>
 <% if(data_1.rule001y!=undefined) {%>
-<%= 'Y = '+ (data_1.rule001y) %>
+<%= 'Y = '+ (data_1.rule001y-90) %>
 <%}%>
 </h5>
 <div id="test">
@@ -71,13 +61,8 @@ socket.on('luck1',function () {
     </h5>
   <script>
   var socket = io.connect("http://localhost");
-    //var dao = "<%=data_1.range001%>"
-  socket.on('email1',function () {
-  socket.emit('standardData');
-	socket.disconnect();
-  })
-  $('#std1').click(function () {
 
+  $('#std1').click(function () {
       ruleform1.submit();
   })
 
@@ -98,26 +83,21 @@ socket.on('luck1',function () {
     <i class=" fa fa-long-arrow-right"></i>
     <script>
     var socket = io.connect("http://localhost");
-    var test2 =false;
     function stsubmit2() {
       socket.emit('std2');
     }
 
     socket.on('luck2',function () {
-      test2=true;
-
-      if(test2){
         standardform2.submit();
-      }
-    })
+    });
 
     </script>
     </form>
     <% if(data_2.rule002x!=undefined) {%>
-    <%= 'X = '+ data_2.rule002x %>
+    <%= 'X = '+ (data_2.rule002x-90) %>
     <%}%>
     <% if(data_2.rule002y!=undefined) {%>
-    <%= 'Y = '+ data_2.rule002y %>
+    <%= 'Y = '+ (data_2.rule002y-90) %>
     <%}%>
     </h5>
     <div id="test">
@@ -137,14 +117,9 @@ socket.on('luck1',function () {
         </h5>
         <script>
         var socket = io.connect("http://localhost");
-          //var dao = "<%=data_1.range001%>"
-          socket.on('email2',function () {
-              socket.emit('standardData');
-	      socket.disconnect();
-          })
-          $('#std2').click(function () {
-              ruleform2.submit();
-          })
+        $('#std2').click(function () {
+            ruleform2.submit();
+        })
         </script>
         </form>
 
@@ -162,26 +137,21 @@ socket.on('luck1',function () {
       <i class=" fa fa-long-arrow-right"></i>
       <script>
       var socket = io.connect("http://localhost");
-      var test3=false;
       function stsubmit3() {
         socket.emit('std3');
       }
 
       socket.on('luck3',function () {
-        test3=true;
-
-        if(test3){
           standardform3.submit();
-        }
-      })
+      });
 
       </script>
       </form>
       <% if(data_3.rule003x!=undefined) {%>
-      <%= 'X = '+data_3.rule003x %>
+      <%= 'X = '+(data_3.rule003x-90) %>
       <%}%>
       <% if(data_3.rule003y!=undefined) {%>
-      <%= 'Y = '+data_3.rule003y %>
+      <%= 'Y = '+(data_3.rule003y-90) %>
       <%}%>
       </h5>
       <div id="test">
@@ -201,14 +171,9 @@ socket.on('luck1',function () {
           </h5>
           <script>
           var socket = io.connect("http://localhost");
-            //var dao = "<%=data_1.range001%>"
-            socket.on('email3',function () {
-                socket.emit('standardData');
-		socket.disconnect();
-            })
-            $('#std3').click(function () {
-                ruleform3.submit();
-            })
+          $('#std3').click(function () {
+              ruleform3.submit();
+          })
           </script>
           </form>
 
@@ -227,26 +192,21 @@ socket.on('luck1',function () {
       <i class=" fa fa-long-arrow-right"></i>
       <script>
       var socket = io.connect("http://localhost");
-      var test4 =false;
       function stsubmit4() {
         socket.emit('std4');
       }
 
       socket.on('luck4',function () {
-        test4=true;
-
-        if(test4){
           standardform4.submit();
-        }
-      })
+      });
 
       </script>
       </form>
       <% if(data_4.rule004x!=undefined) {%>
-      <%= 'X = '+data_4.rule004x %>
+      <%= 'X = '+(data_4.rule004x-90) %>
       <%}%>
       <% if(data_4.rule004y!=undefined) {%>
-      <%= 'Y = '+data_4.rule004y %>
+      <%= 'Y = '+(data_4.rule004y-90) %>
       <%}%>
       </h5>
       <div id="test">
@@ -265,15 +225,9 @@ socket.on('luck1',function () {
           </div>
           </h5>
           <script>
-          var socket = io.connect("http://localhost");
-            //var dao = "<%=data_1.range001%>"
-            socket.on('email4',function () {
-                socket.emit('standaradData');
-		socket.disconnect();
-            })
-            $('#std4').click(function () {
-                ruleform4.submit();
-            })
+          $('#std4').click(function () {
+              ruleform4.submit();
+          })
           </script>
           </form>
 
@@ -291,26 +245,21 @@ socket.on('luck1',function () {
         <i class=" fa fa-long-arrow-right"></i>
         <script>
         var socket = io.connect("http://localhost");
-        var test5 =false;
         function stsubmit5() {
           socket.emit('std5');
         }
 
         socket.on('luck5',function () {
-          test5=true;
-
-          if(test5){
             standardform5.submit();
-          }
-        })
+        });
 
         </script>
         </form>
         <% if(data_5.rule005x!=undefined) {%>
-        <%= 'X = '+data_5.rule005x %>
+        <%= 'X = '+(data_5.rule005x-90) %>
         <%}%>
         <% if(data_5.rule005y!=undefined) {%>
-        <%= 'Y = '+data_5.rule005y %>
+        <%= 'Y = '+(data_5.rule005y-90) %>
         <%}%>
         </h5>
         <div id="test">
@@ -330,17 +279,12 @@ socket.on('luck1',function () {
             </h5>
             <script>
             var socket = io.connect("http://localhost");
-              //var dao = "<%=data_1.range001%>"
-              socket.on('email5',function () {
-                  socket.emit('standardData');
-		  socket.disconnect();
-              })
-              $('#std5').click(function () {
-                  ruleform5.submit();
-              })
+            $('#std5').click(function () {
+                ruleform5.submit();
+            })
+
             </script>
             </form>
-
 
             </div>
           </div>

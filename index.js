@@ -6,7 +6,7 @@ var bodyParser = require('body-parser');
 var mongoose  = require('mongoose');
 var querystring = require('querystring');
 
-require('events').EventEmitter.prototype._maxListeners = 0;
+require('events').EventEmitter.prototype._maxListeners = 9999999;
 
 
 //http server
@@ -14,20 +14,12 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 
-var data_001,data_002,data_003,data_004,data_005,data_006,data_007,data_008,data_009,data_0010;
-var noti001,noti002,noti003,noti004,noti005;
-var rule_001,rule_002,rule_003,rule_004,rule_005;
-var sendData001x;
-var sendData002x;
-var sendData003x;
-var sendData004x;
-var sendData005x;
+var data_001,data_002,data_003,data_004,data_005,data_006,data_007,data_008,data_009,data_0010; // 디바이스 수신데이터를 담을 전역변수
+var noti001,noti002,noti003,noti004,noti005; //알림을 담을 전역변수
+var rule_001,rule_002,rule_003,rule_004,rule_005; // DB데이터 담을 그릇
 
-var sendData001y;
-var sendData002y;
-var sendData003y;
-var sendData004y;
-var sendData005y;
+//디바이스 발신데이터를 담을 전역변수
+var sendData = new Array(15);
 
 
 var alaram=""; // 알람을 담을 그릇
@@ -39,924 +31,191 @@ var ruledata = new Array(10);
 
 
 var rcrule = new Array(5); // 디바이스로부터 받은 기준치
-var rcinterval ; // 디바이스로 부터 받은 주기
-
-
-var fuck1,fuck2,fuck3,fuck4,fuck5;
-var suck1,suck2,suck3,suck4,suck5;
-var duck1,duck2,duck3,duck4,duck5;
-
+//var rcinterval ; // 디바이스로 부터 받은 주기
 
 var dbprevData = new Array(20); //역순으로 데이터를 찾기에 순서를 바꿔줄 그릇
 
+var tcp_R_Data = new Array(10); //들어온 데이터 Parsing(int)
+//var tcp_R_ChData =new Array(10); //parsing한 tcp_R_Data를 그래프표현을 위해 필터링
 
-//각 측정 의 변화 에따라  변수추가
-var pig = new Array(10);
-
-
-
+var falsecount;
 
 // TCP
 var net = require('net');
-var server = net.createServer(function (socket2) {
-  rule001.find({}).sort('-createdAt').exec(function (err, r001) {
+var socket2; // 소켓의 정보를 담을 그릇
+var sd;
+var tcprule001x,tcprule002x,tcprule003x,tcprule004x,tcprule005x;
+var tcprule001y,tcprule002y,tcprule003y,tcprule004y,tcprule005y;
+var tcprange001,tcprange002,tcprange003,tcprange004,tcprange005;
 
-      rule_001=r001[0];
-      if(rule_001==undefined){
-      rule_001={rule001x:"10",rule001y:"10",range001:"10"};
+
+var server = net.createServer(function (socket) {
+
+  console.log('Client connection: ');
+  console.log('   local = %s:%s',socket.localAddress,socket.localPort); //로컬 포트
+  console.log('   remote= %s:%s',socket.remoteAddress,socket.remotePort); //원격 포트
+  socket.setEncoding('utf8');
+
+  socket2=socket; // socket2라는 그릇에 sockt 정보 담기
+
+  //디바이스로 부터 데이터 수신시
+  socket.on('data',function (data) {
+    console.log('Received data from client on port %d: %s',socket.remotePort,data.toString());
+    console.log('   Byte recieved: '+socket.byteRead); // 총 수신 데이터
+    console.log('   Byte sent : '+socket.bytesWritten);
+
+    var recieveData = ""+data;
+    var recieveArray = recieveData.split(',');
+
+    //time
+    var now = new Date();
+    var hour = now.getHours();
+    var min = now.getMinutes();
+    var second = now.getSeconds();
+
+    //beacon1
+    tcp_R_Data[0] =parseInt(recieveArray[0]); //roll1
+    tcp_R_Data[1] =parseInt(recieveArray[1]); //pitch1
+    tcp_R_Data[2] =parseInt(recieveArray[2]); //민감도1
+    //beacon2
+    tcp_R_Data[3] =parseInt(recieveArray[3]); //roll2
+    tcp_R_Data[4] =parseInt(recieveArray[4]); //pitch2
+    tcp_R_Data[5] =parseInt(recieveArray[5]); //민감도2
+    //beacon3
+    tcp_R_Data[6] =parseInt(recieveArray[6]); //roll3
+    tcp_R_Data[7] =parseInt(recieveArray[7]); //pitch2
+    tcp_R_Data[8] =parseInt(recieveArray[8]); //민감도3
+    //beacon4
+    tcp_R_Data[9] =parseInt(recieveArray[9]); //roll4
+    tcp_R_Data[10] =parseInt(recieveArray[10]); //pitch4
+    tcp_R_Data[11] =parseInt(recieveArray[11]); //민감도4
+    //beacon5
+    tcp_R_Data[12] =parseInt(recieveArray[12]); //roll5
+    tcp_R_Data[13] =parseInt(recieveArray[13]); //pitch5
+    tcp_R_Data[14] =parseInt(recieveArray[14]); //민감도5
+    //주기
+    tcp_R_Data[15] =parseInt(recieveArray[15]);
+
+    for(var cnt=0;cnt<tcp_R_Data.length;cnt++){
+      if(tcp_R_Data[cnt]>180){
+        tcp_R_Data[cnt]=180;
       }
-      rule002.find({}).sort('-createdAt').exec(function (err, r002) {
+    }
+//수신데이터 민감도가 다를경우 카운터
+     falsecount=0;
+/*
 
-          rule_002=r002[0];
-          if(rule_002==undefined){
-          rule_002={rule002x:"10",rule002y:"10",range002:"10"};
-          }
-          rule003.find({}).sort('-createdAt').exec(function (err, r003) {
+    //parsing한 tcp_R_Data를 그래프표현을 위해 필터링
+    tcp_R_ChData[0]=tcp_R_Data[0];
+    tcp_R_ChData[1]=tcp_R_Data[1];
+    tcp_R_ChData[2]=tcp_R_Data[3];
+    tcp_R_ChData[3]=tcp_R_Data[4];
+    tcp_R_ChData[4]=tcp_R_Data[6];
+    tcp_R_ChData[5]=tcp_R_Data[7];
+    tcp_R_ChData[6]=tcp_R_Data[9];
+    tcp_R_ChData[7]=tcp_R_Data[10];
+    tcp_R_ChData[8]=tcp_R_Data[12];
+    tcp_R_ChData[9]=tcp_R_Data[13];
 
-              rule_003=r003[0];
-              if(rule_003==undefined){
-              rule_003={rule003x:"10",rule003y:"10",range003:"10"};
-              }
-              rule004.find({}).sort('-createdAt').exec(function (err, r004) {
-
-                  rule_004=r004[0];
-                  if(rule_004==undefined){
-                  rule_004={rule004x:"10",rule004y:"10",range004:"10"};
-                  }
-                  rule005.find({}).sort('-createdAt').exec(function (err, r005) {
-
-                      rule_005=r005[0];
-                      if(rule_005==undefined){
-                      rule_005={rule005x:"10",rule005y:"10",range005:"10"};
-                      }
-                });
-            });
-        });
-    });
-});
-
-    //웹에서 주기버튼 눌렀을시
-  io.on('connection',function (socket) {
-    socket.on('intervalEV',function (message) {
-
-      //console.log('여기니');
-      if(rule_001.psrule001x==undefined){
-        rule_001.psrule001x=90;
+    for(var cnt=0;cnt<tcp_R_ChData.length;cnt++){
+      if(tcp_R_ChData[cnt]<90){
+        tcp_R_ChData[cnt]= -tcp_R_ChData[cnt];
       }
-      if(rule_002.psrule002x==undefined){
-        rule_002.psrule002x=90;
-      }
-      if(rule_003.psrule003x==undefined){
-        rule_003.psrule003x=90;
-      }
-      if(rule_004.psrule004x==undefined){
-        rule_004.psrule004x=90;
-      }
-      if(rule_005.psrule005x==undefined){
-        rule_005.psrule005x=90;
-      }
-
-      if(rule_001.psrule001y==undefined){
-        rule_001.psrule001y=90;
-      }
-      if(rule_002.psrule002y==undefined){
-        rule_002.psrule002y=90;
-      }
-      if(rule_003.psrule003y==undefined){
-        rule_003.psrule003y=90;
-      }
-      if(rule_004.psrule004y==undefined){
-        rule_004.psrule004y=90;
-      }
-      if(rule_005.psrule005y==undefined){
-        rule_005.psrule005y=90;
-      }
-
-
-
-
-          if(rule_001.psrule001x.length==1){
-            sendData001x="00"+parseInt(rule_001.psrule001x);
-          }
-          if(rule_001.psrule001x.length==2){
-            sendData001x="0"+parseInt(rule_001.psrule001x);
-          }
-          if(rule_001.psrule001x.length==3){
-            sendData001x=parseInt(rule_001.psrule001x);
-          }
-          if(rule_002.psrule002x.length==1){
-            sendData002x="00"+rule_002.psrule002x;
-          }
-          if(rule_002.psrule002x.length==2){
-            sendData002x="0"+rule_002.psrule002x;
-          }
-          if(rule_002.psrule002x.length==3){
-            sendData002x=rule_002.psrule002x;
-          }
-          if(rule_003.psrule003x.length==1){
-            sendData003x="00"+rule_003.psrule003x;
-          }
-          if(rule_003.psrule003x.length==2){
-            sendData003x="0"+rule_003.psrule003x;
-          }
-          if(rule_003.psrule003x.length==3){
-            sendData003x=rule_003.psrule003x;
-          }
-          if(rule_004.psrule004x.length==1){
-            sendData004x="00"+rule_004.psrule004x;
-          }
-          if(rule_004.psrule004x.length==2){
-            sendData004x="0"+rule_004.psrule004x;
-          }
-          if(rule_004.psrule004x.length==3){
-            sendData004x=rule_004.psrule004x;
-          }
-          if(rule_005.psrule005x.length==1){
-            sendData005x="00"+rule_005.psrule005x;
-          }
-          if(rule_005.psrule005x.length==2){
-            sendData005x="0"+rule_005.psrule005x;
-          }
-          if(rule_005.psrule005x.length==3){
-            sendData005x=rule_005.psrule005x;
-          }
-
-
-          if(rule_001.psrule001y.length==1){
-            sendData001y="00"+rule_001.psrule001y;
-          }
-          if(rule_001.psrule001y.length==2){
-            sendData001y="0"+rule_001.psrule001y;
-          }
-          if(rule_001.psrule001y.length==3){
-            sendData001y=rule_001.psrule001y;
-          }
-          if(rule_002.psrule002y.length==1){
-            sendData002y="00"+rule_002.psrule002y;
-          }
-          if(rule_002.psrule002y.length==2){
-            sendData002y="0"+rule_002.psrule002y;
-          }
-          if(rule_002.psrule002y.length==3){
-            sendData002y=rule_002.psrule002y;
-          }
-          if(rule_003.psrule003y.length==1){
-            sendData003y="00"+rule_003.psrule003y;
-          }
-          if(rule_003.psrule003y.length==2){
-            sendData003y="0"+rule_003.psrule003y;
-          }
-          if(rule_003.psrule003y.length==3){
-            sendData003y=rule_003.psrule003y;
-          }
-          if(rule_004.psrule004y.length==1){
-            sendData004y="00"+rule_004.psrule004y;
-          }
-          if(rule_004.psrule004y.length==2){
-            sendData004y="0"+rule_004.psrule004y;
-          }
-          if(rule_004.psrule004y.length==3){
-            sendData004y=rule_004.psrule004y;
-          }
-          if(rule_005.psrule005y.length==1){
-            sendData005y="00"+rule_005.psrule005y;
-          }
-          if(rule_005.psrule005y.length==2){
-            sendData005y="0"+rule_005.psrule005y;
-          }
-          if(rule_005.psrule005y.length==3){
-            sendData005y=rule_005.psrule005y;
-          }
-      intervalmessage=message;
-      socket2.write("a"+
-      sendData001x+"x"+sendData001y+"x"+rangedata[0]+"x"+
-      sendData002x+"x"+sendData002y+"x"+rangedata[1]+"x"+
-      sendData003x+"x"+sendData003y+"x"+rangedata[2]+"x"+
-      sendData004x+"x"+sendData004y+"x"+rangedata[3]+"x"+
-      sendData005y+"x"+sendData005y+"x"+rangedata[4]+"x"+
-      message+"b");
-    });
-
-  });
-
-
-
-   io.on('connection',function (socket) {
-	suck1=0;
-  suck2=0;
-  suck3=0;
-  suck4=0;
-  suck5=0;
-
-      socket.on('standardData',function(){
-
-        //console.log("세팅시 데이터 보내기");
-        if(rule_001.psrule001x==undefined){
-          rule_001.psrule001x=90;
+      else if(tcp_R_ChData[cnt]>=90){
+        if(tcp_R_ChData[cnt]>180){
+          tcp_R_ChData[cnt]=90;
         }
-        if(rule_002.psrule002x==undefined){
-          rule_002.psrule002x=90;
+        else{
+          tcp_R_ChData[cnt]-=90;
         }
-        if(rule_003.psrule003x==undefined){
-          rule_003.psrule003x=90;
-        }
-        if(rule_004.psrule004x==undefined){
-          rule_004.psrule004x=90;
-        }
-        if(rule_005.psrule005x==undefined){
-          rule_005.psrule005x=90;
-        }
+      }
+    }
 
-        if(rule_001.psrule001y==undefined){
-          rule_001.psrule001y=90;
-        }
-        if(rule_002.psrule002y==undefined){
-          rule_002.psrule002y=90;
-        }
-        if(rule_003.psrule003y==undefined){
-          rule_003.psrule003y=90;
-        }
-        if(rule_004.psrule004y==undefined){
-          rule_004.psrule004y=90;
-        }
-        if(rule_005.psrule005y==undefined){
-          rule_005.psrule005y=90;
-        }
+    rcrule[0]=tcp_R_Data[2];
+    rcrule[1]=tcp_R_Data[5];
+    rcrule[2]=tcp_R_Data[8];
+    rcrule[3]=tcp_R_Data[11];
+    rcrule[4]=tcp_R_Data[14];
 
+    rcinterval = tcp_R_Data[15];
+*/
 
-
-
-            if(rule_001.psrule001x.length==1){
-              sendData001x="00"+parseInt(rule_001.psrule001x);
-            }
-            if(rule_001.psrule001x.length==2){
-              sendData001x="0"+parseInt(rule_001.psrule001x);
-            }
-            if(rule_001.psrule001x.length==3){
-              sendData001x=parseInt(rule_001.psrule001x);
-            }
-            if(rule_002.psrule002x.length==1){
-              sendData002x="00"+rule_002.psrule002x;
-            }
-            if(rule_002.psrule002x.length==2){
-              sendData002x="0"+rule_002.psrule002x;
-            }
-            if(rule_002.psrule002x.length==3){
-              sendData002x=rule_002.psrule002x;
-            }
-            if(rule_003.psrule003x.length==1){
-              sendData003x="00"+rule_003.psrule003x;
-            }
-            if(rule_003.psrule003x.length==2){
-              sendData003x="0"+rule_003.psrule003x;
-            }
-            if(rule_003.psrule003x.length==3){
-              sendData003x=rule_003.psrule003x;
-            }
-            if(rule_004.psrule004x.length==1){
-              sendData004x="00"+rule_004.psrule004x;
-            }
-            if(rule_004.psrule004x.length==2){
-              sendData004x="0"+rule_004.psrule004x;
-            }
-            if(rule_004.psrule004x.length==3){
-              sendData004x=rule_004.psrule004x;
-            }
-            if(rule_005.psrule005x.length==1){
-              sendData005x="00"+rule_005.psrule005x;
-            }
-            if(rule_005.psrule005x.length==2){
-              sendData005x="0"+rule_005.psrule005x;
-            }
-            if(rule_005.psrule005x.length==3){
-              sendData005x=rule_005.psrule005x;
-            }
-
-
-            if(rule_001.psrule001y.length==1){
-              sendData001y="00"+rule_001.psrule001y;
-            }
-            if(rule_001.psrule001y.length==2){
-              sendData001y="0"+rule_001.psrule001y;
-            }
-            if(rule_001.psrule001y.length==3){
-              sendData001y=rule_001.psrule001y;
-            }
-            if(rule_002.psrule002y.length==1){
-              sendData002y="00"+rule_002.psrule002y;
-            }
-            if(rule_002.psrule002y.length==2){
-              sendData002y="0"+rule_002.psrule002y;
-            }
-            if(rule_002.psrule002y.length==3){
-              sendData002y=rule_002.psrule002y;
-            }
-            if(rule_003.psrule003y.length==1){
-              sendData003y="00"+rule_003.psrule003y;
-            }
-            if(rule_003.psrule003y.length==2){
-              sendData003y="0"+rule_003.psrule003y;
-            }
-            if(rule_003.psrule003y.length==3){
-              sendData003y=rule_003.psrule003y;
-            }
-            if(rule_004.psrule004y.length==1){
-              sendData004y="00"+rule_004.psrule004y;
-            }
-            if(rule_004.psrule004y.length==2){
-              sendData004y="0"+rule_004.psrule004y;
-            }
-            if(rule_004.psrule004y.length==3){
-              sendData004y=rule_004.psrule004y;
-            }
-            if(rule_005.psrule005y.length==1){
-              sendData005y="00"+rule_005.psrule005y;
-            }
-            if(rule_005.psrule005y.length==2){
-              sendData005y="0"+rule_005.psrule005y;
-            }
-            if(rule_005.psrule005y.length==3){
-              sendData005y=rule_005.psrule005y;
-            }
-            //console.log("이양반아 "+sendData001x);
-      socket2.write("a"+
-
-      sendData001x+"x"+sendData001y+"x"+rangedata[0]+"x"+
-      sendData002x+"x"+sendData002y+"x"+rangedata[1]+"x"+
-      sendData003x+"x"+sendData003y+"x"+rangedata[2]+"x"+
-      sendData004x+"x"+sendData004y+"x"+rangedata[3]+"x"+
-      sendData005y+"x"+sendData005y+"x"+rangedata[4]+"x"+
-      intervalmessage+"b");
-	socket.disconnect();
+    //수신 데이터 저장 이전그래프를 띄위기위해
+    var beacon_Data = new beaconData({
+    beacon001x:tcp_R_Data[0],
+    beacon001y:tcp_R_Data[1],
+    beacon002x:tcp_R_Data[3],
+    beacon002y:tcp_R_Data[4],
+    beacon003x:tcp_R_Data[6],
+    beacon003y:tcp_R_Data[7],
+    beacon004x:tcp_R_Data[9],
+    beacon004y:tcp_R_Data[10],
+    beacon005x:tcp_R_Data[12],
+    beacon005y:tcp_R_Data[13],
+    rectime:(hour+":"+min+":"+second)
     });
+    beacon_Data.save(function (err,beacon_Data) {
 
-    socket.on('std1',function () {
-        socket2.write('std');
-        fuck1=1;
-	suck1=1;
-	duck1=1;
-	//socket.disconnect();
-    });
-    socket.on('std2',function () {
-        socket2.write('std');
-        fuck2=1;
-	suck2=1;
-	duck2=1;
-	socket.disconnect();
-    });
-    socket.on('std3',function () {
-        socket2.write('std');
-        fuck3=1;
-	suck3=1;
-  	duck3=1;
-    });
-    socket.on('std4',function () {
-        socket2.write('std');
-        fuck4=1;
-	suck4=1;
-	duck4=1;
-    });
-    socket.on('std5',function () {
-        socket2.write('std');
-        fuck5=1;
-	suck5=1;
-	duck5=1;
     });
 
 
-  });
-
-
-  //client와 접속이 끊겻을때
-  socket2.on('close',function () {
-    //io.close()
-    console.log('client disconnected');
-
-    //socket2.end("good bye");
-  });
-  socket2.on('error',function (err) {
-
-    //console.log(err);
-  });
-
-  console.log(socket2.address().address+"connected");
-
-  //client로 부터 오는 data 출력
-  socket2.on('data',function (data) {
-
-  //문자열로 변환
-  var recieveData   = ""+data;
-  var recieveArray  = recieveData.split(','); //데이터를 ','로 split
-
-
-  //time
-  var now = new Date();
-  var hour = now.getHours();
-  var min = now.getMinutes();
-  var second = now.getSeconds();
-
-
-  //beacon1
-  var d001 =(recieveArray[0]); //roll1
-  var d002 =(recieveArray[1]); //pitch1
-  var d003 =(recieveArray[2]); //민감도1
-
-  //beacon2
-  var d004 =(recieveArray[3]); //roll2
-  var d005 =(recieveArray[4]); //pitch2
-  var d006 =(recieveArray[5]); //민감도2
-
-  //beacon3
-  var d007 =(recieveArray[6]); //roll3
-  var d008 =(recieveArray[7]); //pitch2
-  var d009 =(recieveArray[8]); //민감도3
-
-  //beacon4
-  var d010 =(recieveArray[9]); //roll4
-  var d011 =(recieveArray[10]); //pitch4
-  var d012 =(recieveArray[11]); //민감도4
-
-  //beacon5
-  var d013 =(recieveArray[12]); //roll5
-  var d014 =(recieveArray[13]); //pitch5
-  var d015 =(recieveArray[14]); //민감도5
-
-  //주기
-  var d016 =(recieveArray[15]);
-
-
-
-// 수신 only data 배열
-  var parsingdata = new Array(10);
-  parsingdata[0] =  parseInt(d001);
-  parsingdata[1] =  parseInt(d002);
-  parsingdata[2] =  parseInt(d004);
-  parsingdata[3] =  parseInt(d005);
-  parsingdata[4] =  parseInt(d007);
-  parsingdata[5] =  parseInt(d008);
-  parsingdata[6] =  parseInt(d010);
-  parsingdata[7] =  parseInt(d011);
-  parsingdata[8] =  parseInt(d013);
-  parsingdata[9] =  parseInt(d014);
-
-//각도의 변화에따른 변수 설정
-pig[0]=parsingdata[0];
-pig[1]=parsingdata[1];
-pig[2]=parsingdata[2];
-pig[3]=parsingdata[3];
-pig[4]=parsingdata[4];
-pig[5]=parsingdata[5];
-pig[6]=parsingdata[6];
-pig[7]=parsingdata[7];
-pig[8]=parsingdata[8];
-pig[9]=parsingdata[9];
-
-
-// 수신데이터 최대값 설정
-if(pig[0]<90){
-  pig[0]-=90;
-}
-if(pig[0]>=90){
-  pig[0]-=90;
-}
-if(pig[0]>180){
-  pig[0]=90;
-}
-
-if(pig[1]<90){
-  pig[1]-=90;
-}
-if(pig[1]>=90){
-  pig[1]-=90;
-}
-if(pig[1]>180){
-  pig[1]=90;
-}
-
-if(pig[2]<90){
-  pig[2]-=90;
-}
-if(pig[2]>=90){
-  pig[2]-=90;
-}
-if(pig[2]>180){
-  pig[2]=90;
-}
-
-if(pig[3]<90){
-  pig[3]-=90;
-}
-if(pig[3]>=90){
-  pig[3]-=90;
-}
-if(pig[3]>180){
-  pig[3]=90;
-}
-
-if(pig[4]<90){
-  pig[4]-=90;
-}
-if(pig[4]>=90){
-  pig[4]-=90;
-}
-if(pig[4]>180){
-  pig[4]=90;
-}
-
-if(pig[5]<90){
-  pig[5]-=90;
-}
-if(pig[5]>=90){
-  pig[5]-=90;
-}
-if(pig[5]>180){
-  pig[5]=90;
-}
-
-if(pig[6]<90){
-  pig[6]-=90;
-}
-if(pig[6]>=90){
-  pig[6]-=90;
-}
-if(pig[6]>180){
-  pig[6]=90;
-}
-
-if(pig[7]<90){
-  pig[7]-=90;
-}
-if(pig[7]>=90){
-  pig[7]-=90;
-}
-if(pig[7]>180){
-  pig[7]=90;
-}
-
-if(pig[8]<90){
-  pig[8]-=90;
-}
-if(pig[8]>=90){
-  pig[8]-=90;
-}
-if(pig[8]>180){
-  pig[8]=90;
-}
-
-if(pig[9]<90){
-  pig[9]-=90;
-}
-if(pig[9]>=90){
-  pig[9]-=90;
-}
-if(pig[9]>180){
-  pig[9]=90;
-}
-
-
-//민감도
-rcrule[0] = d003;
-rcrule[1] = d006;
-rcrule[2] = d009;
-rcrule[3] = d012;
-rcrule[4] = d015;
-
-//이상데이터
-
-//console.log(d016.length);
-
-if(d016.length!=3){
-  socket2.write("tt");
-}
-
-
-//주기
-rcinterval = d016;
-
-
-  data_001=parsingdata[0];
-  data_002=parsingdata[1];
-  data_003=parsingdata[2];
-  data_004=parsingdata[3];
-  data_005=parsingdata[4];
-  data_006=parsingdata[5];
-  data_007=parsingdata[6];
-  data_008=parsingdata[7];
-  data_009=parsingdata[8];
-  data_010=parsingdata[9];
-
-
-//수신 데이터 저장 이전그래프를 띄위기위해
- var beacon_Data = new beaconData({
-  beacon001x:pig[0],
-  beacon001y:pig[1],
-  beacon002x:pig[2],
-  beacon002y:pig[3],
-  beacon003x:pig[4],
-  beacon003y:pig[5],
-  beacon004x:pig[6],
-  beacon004y:pig[7],
-  beacon005x:pig[8],
-  beacon005y:pig[9],
-  rectime:(hour+":"+min+":"+second)
-    });
-  beacon_Data.save(function (err,beacon_Data) {
-
-  });
-
-
-if(data){
-////
-
-  if(fuck1==1){
-    var stnum1=1*rcrule[0];
-    var log1 = new rule001({
-      rule001x:pig[0],
-      rule001y:pig[1],
-      psrule001x:data_001,
-      psrule001y:data_002,
-      range001:stnum1
-    });
-    //console.log("1 번"+log1);
-    log1.save(function (err,log1) {
-      //console.log(log1);
-      //hook1=1;
-    });
-    io.emit('luck1');
-	fuck1=0;
-  }
-  if(fuck2==1){
-    var stnum2=1*rcrule[1];
-    var log2 = new rule002({
-      rule002x:pig[2],
-      rule002y:pig[3],
-      psrule002x:data_003,
-      psrule002y:data_004,
-      range002:stnum2
-    });
-    //console.log("2번"+log2);
-    log2.save(function (err,log2) {
-    });
-    io.emit('luck2');
-	fuck2=0;
-  }
-  if(fuck3==1){
-    var stnum3=1*rcrule[2];
-    var log3 = new rule003({
-      rule003x:pig[4],
-      rule003y:pig[5],
-      psrule003x:data_005,
-      psrule003y:data_006,
-      range003:stnum3
-    });
-    //console.log("3번"+log3);
-    log3.save(function (err,log3) {
-    });
-    io.emit('luck3');
-	fuck3=0;
-  }
-  if(fuck4==1){
-    var stnum4=1*rcrule[3];
-    var log4 = new rule004({
-      rule004x:pig[6],
-      rule004y:pig[7],
-      psrule004x:data_007,
-      psrule004y:data_008,
-      range004:stnum4
-    });
-    //console.log("4번"+log4);
-    log4.save(function (err,log4) {
-    });
-    io.emit('luck4');
-	fuck4=0;
-  }
-  if(fuck5==1){
-    var stnum5=1*rcrule[4];
-    var log5 = new rule005({
-      rule005x:pig[8],
-      rule005y:pig[9],
-      psrule005x:data_009,
-      psrule005y:data_010,
-      range005:stnum5
-    });
-    //console.log("5번"+log5);
-    log5.save(function (err,log5) {
-    });
-    io.emit('luck5');
-	fuck5=0;
-  }
-
-
-//디바이스에서 보낸 데이터(주기,민감도)가 다를 경우
-if(fuck1==1||fuck2==1||fuck3==1||fuck4==1||fuck5==1){
-if(rcrule[0]!=rangedata[0]||rcrule[1]!=rangedata[1]||rcrule[2]!=rangedata[2]||rcrule[3]!=rangedata[3]||rcrule[4]!=rangedata[4]||rcinterval!=intervalmessage){
-  //console.log("디바이스 에서 보낸 데이터 가 달라");
-  //console.log("봐봐: "+rule_001.psrule001x);
-  if(rule_001.psrule001x===undefined){
-    rule_001.psrule001x=90;
-  }
-  if(rule_002.psrule002x===undefined){
-    rule_002.psrule002x=90;
-  }
-  if(rule_003.psrule003x===undefined){
-    rule_003.psrule003x=90;
-  }
-  if(rule_004.psrule004x===undefined){
-    rule_004.psrule004x=90;
-  }
-  if(rule_005.psrule005x===undefined){
-    rule_005.psrule005x=90;
-  }
-
-  if(rule_001.psrule001y===undefined){
-    rule_001.psrule001y=90;
-  }
-  if(rule_002.psrule002y===undefined){
-    rule_002.psrule002y=90;
-  }
-  if(rule_003.psrule003y===undefined){
-    rule_003.psrule003y=90;
-  }
-  if(rule_004.psrule004y===undefined){
-    rule_004.psrule004y=90;
-  }
-  if(rule_005.psrule005y===undefined){
-    rule_005.psrule005y=90;
-  }
-
-
-
-
-      if(rule_001.psrule001x.length==1){
-        sendData001x="00"+parseInt(rule_001.psrule001x);
-      }
-      if(rule_001.psrule001x.length==2){
-        sendData001x="0"+parseInt(rule_001.psrule001x);
-      }
-      if(rule_001.psrule001x.length==3){
-        sendData001x=parseInt(rule_001.psrule001x);
-      }
-      if(rule_002.psrule002x.length==1){
-        sendData002x="00"+rule_002.psrule002x;
-      }
-      if(rule_002.psrule002x.length==2){
-        sendData002x="0"+rule_002.psrule002x;
-      }
-      if(rule_002.psrule002x.length==3){
-        sendData002x=rule_002.psrule002x;
-      }
-      if(rule_003.psrule003x.length==1){
-        sendData003x="00"+rule_003.psrule003x;
-      }
-      if(rule_003.psrule003x.length==2){
-        sendData003x="0"+rule_003.psrule003x;
-      }
-      if(rule_003.psrule003x.length==3){
-        sendData003x=rule_003.psrule003x;
-      }
-      if(rule_004.psrule004x.length==1){
-        sendData004x="00"+rule_004.psrule004x;
-      }
-      if(rule_004.psrule004x.length==2){
-        sendData004x="0"+rule_004.psrule004x;
-      }
-      if(rule_004.psrule004x.length==3){
-        sendData004x=rule_004.psrule004x;
-      }
-      if(rule_005.psrule005x.length==1){
-        sendData005x="00"+rule_005.psrule005x;
-      }
-      if(rule_005.psrule005x.length==2){
-        sendData005x="0"+rule_005.psrule005x;
-      }
-      if(rule_005.psrule005x.length==3){
-        sendData005x=rule_005.psrule005x;
-      }
-
-
-      if(rule_001.psrule001y.length==1){
-        sendData001y="00"+rule_001.psrule001y;
-      }
-      if(rule_001.psrule001y.length==2){
-        sendData001y="0"+rule_001.psrule001y;
-      }
-      if(rule_001.psrule001y.length==3){
-        sendData001y=rule_001.psrule001y;
-      }
-      if(rule_002.psrule002y.length==1){
-        sendData002y="00"+rule_002.psrule002y;
-      }
-      if(rule_002.psrule002y.length==2){
-        sendData002y="0"+rule_002.psrule002y;
-      }
-      if(rule_002.psrule002y.length==3){
-        sendData002y=rule_002.psrule002y;
-      }
-      if(rule_003.psrule003y.length==1){
-        sendData003y="00"+rule_003.psrule003y;
-      }
-      if(rule_003.psrule003y.length==2){
-        sendData003y="0"+rule_003.psrule003y;
-      }
-      if(rule_003.psrule003y.length==3){
-        sendData003y=rule_003.psrule003y;
-      }
-      if(rule_004.psrule004y.length==1){
-        sendData004y="00"+rule_004.psrule004y;
-      }
-      if(rule_004.psrule004y.length==2){
-        sendData004y="0"+rule_004.psrule004y;
-      }
-      if(rule_004.psrule004y.length==3){
-        sendData004y=rule_004.psrule004y;
-      }
-      if(rule_005.psrule005y.length==1){
-        sendData005y="00"+rule_005.psrule005y;
-      }
-      if(rule_005.psrule005y.length==2){
-        sendData005y="0"+rule_005.psrule005y;
-      }
-      if(rule_005.psrule005y.length==3){
-        sendData005y=rule_005.psrule005y;
-      }
-socket2.write("a"+
-  sendData001x+"x"+sendData001y+"x"+rangedata[0]+"x"+
-  sendData002x+"x"+sendData002y+"x"+rangedata[1]+"x"+
-  sendData003x+"x"+sendData003y+"x"+rangedata[2]+"x"+
-  sendData004x+"x"+sendData004y+"x"+rangedata[3]+"x"+
-  sendData005y+"x"+sendData005y+"x"+rangedata[4]+"x"+
-  intervalmessage+"b");
-
-  }
-
-
-
-}
-
-}
-
-/** 데이터 확인 로그 **/
-
-
-
-
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 기준 관련 START @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-// 기준 설정
-
-var parse1,parse2,parse3,parse4,parse5;
-
-
-
-// (1)
-if(rule_001.range001!=undefined){
-  parse1=rule_001.range001;
-}
-// (2)
-if(rule_002.range002!=undefined){
-  parse2=rule_002.range002;
-}
-// (3)
-if(rule_003.range003!=undefined){
-  parse3=rule_003.range003;
-}
-// (4)
-if(rule_004.range004!=undefined){
-  parse4=rule_004.range004;
-}
-// (5)
-if(rule_005.range005!=undefined){
-  parse5=rule_005.range005;
-}
-
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 기준 관련 END @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 알람 관련 start @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-var notidata001x = parseInt(rule_001.psrule001x);
-var notidata001y = parseInt(rule_001.psrule001y);
-var notidata002x = parseInt(rule_002.psrule002x);
-var notidata002y = parseInt(rule_002.psrule002y);
-var notidata003x = parseInt(rule_003.psrule003x);
-var notidata003y = parseInt(rule_003.psrule003y);
-var notidata004x = parseInt(rule_004.psrule004x);
-var notidata004y = parseInt(rule_004.psrule004y);
-var notidata005x = parseInt(rule_005.psrule005x);
-var notidata005y = parseInt(rule_005.psrule005y);
-
-
-
-// (1) 알람 연산
+    //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 알람 관련 start @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    var notidata001x = parseInt(rule_001.rule001x);
+    var notidata001y = parseInt(rule_001.rule001y);
+    var notidata002x = parseInt(rule_002.rule002x);
+    var notidata002y = parseInt(rule_002.rule002y);
+    var notidata003x = parseInt(rule_003.rule003x);
+    var notidata003y = parseInt(rule_003.rule003y);
+    var notidata004x = parseInt(rule_004.rule004x);
+    var notidata004y = parseInt(rule_004.rule004y);
+    var notidata005x = parseInt(rule_005.rule005x);
+    var notidata005y = parseInt(rule_005.rule005y);
+
+
+    var parse1,parse2,parse3,parse4,parse5;
+    // (1)
+    if(rule_001.range001!==undefined){
+      parse1=70;
+    }else {
+      parse1=rule_001.range001;
+    }
+    // (2)
+    if(rule_002.range002!==undefined){
+      parse2=70;
+    }else {
+      parse2=rule_002.range002;
+    }
+
+    // (3)
+    if(rule_003.range003!==undefined){
+      parse3=70;
+    }else {
+      parse3=rule_003.range003;
+    }
+    // (4)
+    if(rule_004.range004!==undefined){
+      parse4=70;
+    }else {
+      parse4=rule_004.range004;
+    }
+    // (5)
+    if(rule_005.range005!==undefined){
+      parse5=70;
+    }else {
+      parse5=rule_005.range005;
+    }
+
+    // (1) 알람 연산
 var plus001x = notidata001x +parseInt(parse1);
 var plus001y = notidata001y +parseInt(parse1);
 var minus001x =notidata001x -parseInt(parse1);
 var minus001y =notidata001y -parseInt(parse1);
 
 
-if((parsingdata[0]>plus001x)||(parsingdata[1]>plus001y)||(parsingdata[0]<minus001x)||(parsingdata[1]<minus001y)){
+if((tcp_R_Data[0]>plus001x)||(tcp_R_Data[1]>plus001y)||(tcp_R_Data[0]<minus001x)||(tcp_R_Data[1]<minus001y)){
   noti001=1;
 }
-if((parsingdata[0]<=plus001x)&&(parsingdata[1]<=plus001y)&&(parsingdata[0]>=minus001x)&&(parsingdata[1]>=minus001y)){
+if((tcp_R_Data[0]<=plus001x)&&(tcp_R_Data[1]<=plus001y)&&(tcp_R_Data[0]>=minus001x)&&(tcp_R_Data[1]>=minus001y)){
   noti001=0;
 }
 
@@ -967,10 +226,10 @@ var plus002y = notidata002y +parseInt(parse2);
 var minus002x =notidata002x -parseInt(parse2);
 var minus002y =notidata002y -parseInt(parse2);
 
-if((parsingdata[2]>plus002x)||(parsingdata[3]>plus002y)||(parsingdata[2]<minus002x)||(parsingdata[3]<minus002y)){
+if((tcp_R_Data[3]>plus002x)||(tcp_R_Data[4]>plus002y)||(tcp_R_Data[3]<minus002x)||(tcp_R_Data[4]<minus002y)){
   noti002=1;
 }
-if((parsingdata[2]<=plus002x)&&(parsingdata[3]<=plus002y)&&(parsingdata[2]>=minus002x)&&(parsingdata[3]>=minus002y)){
+if((tcp_R_Data[3]<=plus002x)&&(tcp_R_Data[4]<=plus002y)&&(tcp_R_Data[3]>=minus002x)&&(tcp_R_Data[4]>=minus002y)){
   noti002=0;
 }
 
@@ -981,10 +240,10 @@ var plus003y = notidata003y +parseInt(parse3);
 var minus003x =notidata003x -parseInt(parse3);
 var minus003y =notidata003y -parseInt(parse3);
 
-if((parsingdata[4]>plus003x)||(parsingdata[5]>plus003y)||(parsingdata[4]<minus003x)||(parsingdata[5]<minus003y)){
+if((tcp_R_Data[6]>plus003x)||(tcp_R_Data[7]>plus003y)||(tcp_R_Data[6]<minus003x)||(tcp_R_Data[7]<minus003y)){
   noti003=1;
 }
-if((parsingdata[4]<=plus003x)&&(parsingdata[5]<=plus003y)&&(parsingdata[4]>=minus003x)&&(parsingdata[5]>=minus003y)){
+if((tcp_R_Data[6]<=plus003x)&&(tcp_R_Data[7]<=plus003y)&&(tcp_R_Data[6]>=minus003x)&&(tcp_R_Data[7]>=minus003y)){
   noti003=0;
 }
 
@@ -995,10 +254,10 @@ var plus004y = notidata004y +parseInt(parse4);
 var minus004x =notidata004x -parseInt(parse4);
 var minus004y = notidata004y -parseInt(parse4);
 
-if((parsingdata[6]>plus004x)||(parsingdata[7]>plus004y)||(parsingdata[6]<minus004x)||(parsingdata[7]<minus004y)){
+if((tcp_R_Data[9]>plus004x)||(tcp_R_Data[10]>plus004y)||(tcp_R_Data[9]<minus004x)||(tcp_R_Data[10]<minus004y)){
   noti004=1;
 }
-if((parsingdata[6]<=plus004x)&&(parsingdata[7]<=plus004y)&&(parsingdata[6]>=minus004x)&&(parsingdata[7]>=minus004y)){
+if((tcp_R_Data[9]<=plus004x)&&(tcp_R_Data[10]<=plus004y)&&(tcp_R_Data[9]>=minus004x)&&(tcp_R_Data[10]>=minus004y)){
   noti004=0;
 }
 
@@ -1009,16 +268,12 @@ var plus005y = notidata005y +parseInt(parse5);
 var minus005x =notidata005x -parseInt(parse5);
 var minus005y =notidata005y -parseInt(parse5);
 
-if((parsingdata[8]>plus005x)||(parsingdata[9]>plus005y)||(parsingdata[8]<minus005x)||(parsingdata[9]<minus005y)){
+if((tcp_R_Data[12]>plus005x)||(tcp_R_Data[13]>plus005y)||(tcp_R_Data[12]<minus005x)||(tcp_R_Data[13]<minus005y)){
   noti005=1;
 }
-if((parsingdata[8]<=plus005x)&&(parsingdata[9]<=plus005y)&&(parsingdata[8]>=minus005x)&&(parsingdata[9]>=minus005y)){
+if((tcp_R_Data[12]<=plus005x)&&(tcp_R_Data[13]<=plus005y)&&(tcp_R_Data[12]>=minus005x)&&(tcp_R_Data[13]>=minus005y)){
   noti005=0;
 }
-
-
-
-
 
 //알람 배열
 var notiarr=[noti001,noti002,noti003,noti004,noti005];
@@ -1030,139 +285,242 @@ var notiarr=[noti001,noti002,noti003,noti004,noti005];
     }
   }
 
+  //alaram DB저장
+  if(alaram!==""){
+    var alaramsave = new alaram1({
+          id:1,
+          alaram:alaram
+        });
+
+      alaramsave.save(function (err,alaramsave) {
+
+    });
+  }
 
 
 
-
-//alaram DB저장
-if(alaram!=""){
-  var alaramsave = new alaram1({
-        id:1,
-        alaram:alaram
+  // (1) 알림
+  if(noti001==1){
+    var log1 = new beacon001({
+        bnum:1,
+        gnum:1,
+        status:"경고",
+        beaconx:tcp_R_Data[0],
+        beacony:tcp_R_Data[1]
       });
+      console.log("1번 비콘 경고 받음");
 
-    alaramsave.save(function (err,alaramsave) {
+  }
 
-  });
-}
+  // (2) 알림
+  if(noti002==1){
+    var log2 = new beacon002({
+        bnum:2,
+        gnum:1,
+        status:"경고",
+        beaconx:tcp_R_Data[3],
+        beacony:tcp_R_Data[4]
+      });
+      console.log("2번 비콘 경고 받음");
+    log2.save(function (err,log2) {
 
-
-
-// (1) 알림
-if(noti001==1){
-  var log1 = new beacon001({
-      bnum:1,
-      gnum:1,
-      status:"경고",
-      beaconx:pig[0],
-      beacony:pig[1]
     });
-    console.log("1번 비콘 경고 받음");
-  log1.save(function (err,log1) {
-  });
-}
+  }
 
-// (2) 알림
-if(noti002==1){
-  var log2 = new beacon002({
-      bnum:2,
-      gnum:1,
-      status:"경고",
-      beaconx:pig[2],
-      beacony:pig[3]
+  // (3) 알림
+  if(noti003==1){
+    var log3 = new beacon003({
+        bnum:3,
+        gnum:1,
+        status:"경고",
+        beaconx:tcp_R_Data[6],
+        beacony:tcp_R_Data[7]
+      });
+      console.log("3번 비콘 경고 받음");
+    log3.save(function (err,log3) {
     });
-    console.log("2번 비콘 경고 받음");
-  log2.save(function (err,log2) {
+  }
 
-  });
-}
-
-// (3) 알림
-if(noti003==1){
-  var log3 = new beacon003({
-      bnum:3,
-      gnum:1,
-      status:"경고",
-      beaconx:pig[4],
-      beacony:pig[5]
+  // (4) 알림
+  if(noti004==1){
+    var log4 = new beacon004({
+        bnum:4,
+        gnum:1,
+        status:"경고",
+        beaconx:tcp_R_Data[9],
+        beacony:tcp_R_Data[10]
+      });
+      console.log("4번 비콘 경고 받음");
+    log4.save(function (err,log4) {
     });
-    console.log("3번 비콘 경고 받음");
-  log3.save(function (err,log3) {
-  });
-}
+  }
 
-// (4) 알림
-if(noti004==1){
-  var log4 = new beacon004({
-      bnum:4,
-      gnum:1,
-      status:"경고",
-      beaconx:pig[6],
-      beacony:pig[7]
+  // (5) 알림
+  if(noti005==1){
+    var log5 = new beacon005({
+        bnum:5,
+        gnum:1,
+        status:"경고",
+        beaconx:tcp_R_Data[12],
+        beacony:tcp_R_Data[13]
+      });
+      console.log("5번 비콘 경고 받음");
+    log5.save(function (err,log5) {
     });
-    console.log("4번 비콘 경고 받음");
-  log4.save(function (err,log4) {
-  });
-}
+  }
 
-// (5) 알림
-if(noti005==1){
-  var log5 = new beacon005({
-      bnum:5,
-      gnum:1,
-      status:"경고",
-      beaconx:pig[8],
-      beacony:pig[9]
-    });
-    console.log("5번 비콘 경고 받음");
-  log5.save(function (err,log5) {
-  });
-}
+  //수신데이터의 민감도가 다를시
+
+  if(tcp_R_Data[2]!=rule_001.range001||tcp_R_Data[5]!=rule_002.range002||tcp_R_Data[8]!=rule_003.range003||tcp_R_Data[11]!=rule_004.range004||tcp_R_Data[14]!=rule_005.range005||tcp_R_Data[15]!=intervalmessage){
+    falsecount=1;
+    sendData[0]=rule_001.rule001x;
+    sendData[1]=rule_002.rule002x;
+    sendData[2]=rule_003.rule003x;
+    sendData[3]=rule_004.rule004x;
+    sendData[4]=rule_005.rule005x;
+
+    sendData[5]=rule_001.rule001y;
+    sendData[6]=rule_002.rule002y;
+    sendData[7]=rule_003.rule003y;
+    sendData[8]=rule_004.rule004y;
+    sendData[9]=rule_005.rule005y;
+
+    sendData[10]=rule_001.range001;
+    sendData[11]=rule_002.range002;
+    sendData[12]=rule_003.range003;
+    sendData[13]=rule_004.range004;
+    sendData[14]=rule_005.range005;
+
+    for(var d=0;d<15;d++){
+    if(sendData[d].length==1){
+      sendData[d]="00"+sendData[d];
+    }
+    else if(sendData[d].length==2){
+      sendData[d]="0"+sendData[d];
+    }
+    else if(sendData[d].length==3){
+      sendData[d]=sendData[d];
+    }
+    }
+    var tcpsendData="a"+sendData[0]+"x"+sendData[5]+"x"+sendData[10]+"x"+
+                    sendData[1]+"x"+sendData[6]+"x"+sendData[11]+"x"+
+                    sendData[2]+"x"+sendData[7]+"x"+sendData[12]+"x"+
+                    sendData[3]+"x"+sendData[8]+"x"+sendData[13]+"x"+
+                    sendData[4]+"x"+sendData[9]+"x"+sendData[14]+"x"+
+                    intervalmessage+"b";
+   writeData(socket2,tcpsendData);
+  }
+    io.emit('chat message',tcp_R_Data,alaram);
+
+    if(std1==1){
+      rule001.find({}).sort('-createdAt').exec(function (err, r001) {
+          var log1 = new rule001({
+            rule001x:tcp_R_Data[0],
+            rule001y:tcp_R_Data[1],
+            range001:r001[0].range001
+          });
+          log1.save(function (err,log1) {
+          });
+      });
+      tcprule001x=tcp_R_Data[0];
+      tcprule001y=tcp_R_Data[1];
+
+      io.emit('luck1');
+
+      std1=0;
+    }
+    if(std2==1){
+      rule002.find({}).sort('-createdAt').exec(function (err, r002) {
+          var log2 = new rule002({
+            rule002x:tcp_R_Data[3],
+            rule002y:tcp_R_Data[4],
+            range002:r002[0].range002
+          });
+          log2.save(function (err,log2) {
+          });
+      });
+      tcprule002x=tcp_R_Data[3];
+      tcprule002y=tcp_R_Data[4];
+      io.emit('luck2');
+      std2=0;
+    }
+    if(std3==1){
+      rule003.find({}).sort('-createdAt').exec(function (err, r003) {
+          var log3 = new rule003({
+            rule003x:tcp_R_Data[6],
+            rule003y:tcp_R_Data[7],
+            range003:r003[0].range003
+          });
+          log3.save(function (err,log3) {
+          });
+      });
+      tcprule003x=tcp_R_Data[6];
+      tcprule003y=tcp_R_Data[7];
+      io.emit('luck3');
+
+      std3=0;
+    }
+    if(std4==1){
+      rule004.find({}).sort('-createdAt').exec(function (err, r004) {
+          var log4 = new rule004({
+            rule004x:tcp_R_Data[9],
+            rule004y:tcp_R_Data[10],
+            range004:r004[0].range004
+          });
+          log4.save(function (err,log4) {
+          });
+      });
+      tcprule004x=tcp_R_Data[9];
+      tcprule004y=tcp_R_Data[10];
+      io.emit('luck4');
+      std4=0;
+    }
+    if(std5==1){
+      rule005.find({}).sort('-createdAt').exec(function (err, r005) {
+          var log5 = new rule005({
+            rule005x:tcp_R_Data[12],
+            rule005y:tcp_R_Data[13],
+            range005:r005[0].range005
+          });
+          log5.save(function (err,log5) {
+          });
+      });
+      tcprule005x=tcp_R_Data[12];
+      tcprule005y=tcp_R_Data[13];
+      io.emit('luck5');
+      std5=0;
+    }
+});
 
 
-
-
-  // 서버 -> 클라이언트 이벤트 (수신데이터,알람데이터)
-
-/*
-io.emit('chat message',parsingdata,alaram);
-  });
-*/
-
-//test
-io.emit('chat message',pig,alaram,recieveArray);
-//console.log(recieveArray);
-  });
-
-
-  rule001.find({}).sort('-createdAt').exec(function (err, r001) {
+rule001.find({}).sort('-createdAt').exec(function (err, r001) {
 
       rule_001=r001[0];
-      if(rule_001==undefined){
+      if(rule_001===undefined){
       rule_001={rule001x:"10",rule001y:"10",range001:"10"};
       }
       rule002.find({}).sort('-createdAt').exec(function (err, r002) {
 
           rule_002=r002[0];
-          if(rule_002==undefined){
+          if(rule_002===undefined){
           rule_002={rule002x:"10",rule002y:"10",range002:"10"};
           }
           rule003.find({}).sort('-createdAt').exec(function (err, r003) {
 
               rule_003=r003[0];
-              if(rule_003==undefined){
+              if(rule_003===undefined){
               rule_003={rule003x:"10",rule003y:"10",range003:"10"};
               }
               rule004.find({}).sort('-createdAt').exec(function (err, r004) {
 
                   rule_004=r004[0];
-                  if(rule_004==undefined){
+                  if(rule_004===undefined){
                   rule_004={rule004x:"10",rule004y:"10",range004:"10"};
                   }
                   rule005.find({}).sort('-createdAt').exec(function (err, r005) {
 
                       rule_005=r005[0];
-                      if(rule_005==undefined){
+                      if(rule_005===undefined){
                       rule_005={rule005x:"10",rule005y:"10",range005:"10"};
                       }
                 });
@@ -1171,24 +529,46 @@ io.emit('chat message',pig,alaram,recieveArray);
     });
 });
 
+// socket 반대편에 FIN 패킷을 보낼때
+  socket.on('end',function () {
+    console.log('Client disconnected');
+    server.getConnections(function (err,count) {
+      console.log('Remaining Connection: '+count);
+    });
+  });
 
-
-
-
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 알람 관련 END @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  // socket 에러 발생시
+  socket.on('error',function (err) {
+    console.log('Socket Error: '+JSON.stringify(err));
+  });
 
 });
 
 
-// 에러처리
-server.on('error',function (err) {
-  console.log('err'+err);
-});
-
-//port 11111로 연결 대기
+//TCP 포트설정
 server.listen(11111,function () {
-  console.log('TCP listening on 11111');
+  console.log('Server listening: '+JSON.stringify(server.address()));
+
+  server.on('close',function () {
+    console.log('Server Terminated');
+  });
+
+  server.on('error',function (err) {
+    console.log('Server Error: ',JSON.stringify(err));
+  });
 });
+
+// TCP 쓰기 함수
+function writeData(socket,data) {
+    var success = !socket.write(data);
+    if(!success){
+      (function (socket,data) {
+          socket.once('drain',function () {
+              writeData(socket,data);
+          });
+      })(socket,data);
+    }
+}
 
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ DB 관련 start @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -1271,6 +651,7 @@ app.use(express.static(path.join(__dirname, 'public')));// 정적폴더 세팅
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@ mapping 관련 START @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 //##################### 접속 첫 페이지 ########################
+
 app.get('/',function (req,res) {
   res.render('index');
 
@@ -1278,9 +659,7 @@ app.get('/',function (req,res) {
 
 
 app.get('/input',function (req,res) {
-
-
-
+  console.log("카웉너"+falsecount);
   rule001.find({}).sort('-createdAt').exec(function (err, r001) {
 
       rule002.find({}).sort('-createdAt').exec(function (err, r002) {
@@ -1298,276 +677,267 @@ app.get('/input',function (req,res) {
                               rule_004=r004[0];
                               rule_005=r005[0];
 
-                              if(rule_001==undefined){
+                              if(rule_001===undefined){
                                 rule_001={rule001x:"10",rule001y:"10",range001:"10"};
                               }
-                              if(rule_002==undefined){
+                              if(rule_002===undefined){
                                 rule_002={rule002x:"10",rule002y:"10",range002:"10"};
                               }
-                              if(rule_003==undefined){
+                              if(rule_003===undefined){
                                 rule_003={rule003x:"10",rule003y:"10",range003:"10"};
                               }
-                              if(rule_004==undefined){
+                              if(rule_004===undefined){
                                 rule_004={rule004x:"10",rule004y:"10",range004:"10"};
                               }
-                              if(rule_005==undefined){
+                              if(rule_005===undefined){
                                 rule_005={rule005x:"10",rule005y:"10",range005:"10"};
                               }
 
+                              sendData[0]=rule_001.rule001x;
+                              sendData[1]=rule_002.rule002x;
+                              sendData[2]=rule_003.rule003x;
+                              sendData[3]=rule_004.rule004x;
+                              sendData[4]=rule_005.rule005x;
+
+                              sendData[5]=rule_001.rule001y;
+                              sendData[6]=rule_002.rule002y;
+                              sendData[7]=rule_003.rule003y;
+                              sendData[8]=rule_004.rule004y;
+                              sendData[9]=rule_005.rule005y;
+
+                              sendData[10]=rule_001.range001;
+                              sendData[11]=rule_002.range002;
+                              sendData[12]=rule_003.range003;
+                              sendData[13]=rule_004.range004;
+                              sendData[14]=rule_005.range005;
+
+                      if(sd==1&&falsecount==0){
+                        for(var i=0;i<15;i++){
+                          if(sendData[i].length==1){
+                            sendData[i]="00"+sendData[i];
+                          }
+                          else if(sendData[i].length==2){
+                            sendData[i]="0"+sendData[i];
+                          }
+                          else if(sendData[i].length==3){
+                            sendData[i]=sendData[i];
+                          }
+                        }
+                        var tcpsendData="a"+sendData[0]+"x"+sendData[5]+"x"+sendData[10]+"x"+
+                                        sendData[1]+"x"+sendData[6]+"x"+sendData[11]+"x"+
+                                        sendData[2]+"x"+sendData[7]+"x"+sendData[12]+"x"+
+                                        sendData[3]+"x"+sendData[8]+"x"+sendData[13]+"x"+
+                                        sendData[4]+"x"+sendData[9]+"x"+sendData[14]+"x"+
+                                        intervalmessage+"b";
+                       writeData(socket2,tcpsendData);
+                   sd=0;
+                     }
+
 
                               res.render("input",{data_1:rule_001,data_2:rule_002,data_3:rule_003,data_4:rule_004,data_5:rule_005});
-
-          });
-        });
-      });
-    });
-  });
+                            });
+                            });
+                          });
+                        });
+                      });
 });
 
 
 
 
 //################# 기준치 설정 POST START #######################
+var std1,std2,std3,std4,std5;
+var sstd1=1,sstd2=1,sstd3=1,sstd4=1,sstd5=1;
+io.on('connection',function (socketio) {
+  socketio.on('std1',function () {
+    writeData(socket2,"std");
+    std1=1;
+    sstd1=0;
+    console.log('std 버튼 누르기');
+  });
+  socketio.on('std2',function () {
+    writeData(socket2,"std");
+    std2=1;
+    sstd2=0;
+  });
+  socketio.on('std3',function () {
+    writeData(socket2,"std");
+    std3=1;
+    sstd3=0;
+  });
+  socketio.on('std4',function () {
+    writeData(socket2,"std");
+    std4=1;
+    sstd4=0;
+  });
+  socketio.on('std5',function () {
+    writeData(socket2,"std");
+    std5=1;
+    sstd5=0;
+  });
+
+  //주기
+  socketio.on('intervalEV',function (message) {
+
+    intervalmessage=message;
+    sendData[0]=rule_001.rule001x;
+    sendData[1]=rule_002.rule002x;
+    sendData[2]=rule_003.rule003x;
+    sendData[3]=rule_004.rule004x;
+    sendData[4]=rule_005.rule005x;
+
+    sendData[5]=rule_001.rule001y;
+    sendData[6]=rule_002.rule002y;
+    sendData[7]=rule_003.rule003y;
+    sendData[8]=rule_004.rule004y;
+    sendData[9]=rule_005.rule005y;
+
+    sendData[10]=rule_001.range001;
+    sendData[11]=rule_002.range002;
+    sendData[12]=rule_003.range003;
+    sendData[13]=rule_004.range004;
+    sendData[14]=rule_005.range005;
+for(var i=0;i<15;i++){
+if(sendData[i].length==1){
+  sendData[i]="00"+sendData[i];
+}
+else if(sendData[i].length==2){
+  sendData[i]="0"+sendData[i];
+}
+else if(sendData[i].length==3){
+  sendData[i]=sendData[i];
+}
+}
+    var tcpsendData="a"+sendData[0]+"x"+sendData[5]+"x"+sendData[10]+"x"+
+                    sendData[1]+"x"+sendData[6]+"x"+sendData[11]+"x"+
+                    sendData[2]+"x"+sendData[7]+"x"+sendData[12]+"x"+
+                    sendData[3]+"x"+sendData[8]+"x"+sendData[13]+"x"+
+                    sendData[4]+"x"+sendData[9]+"x"+sendData[14]+"x"+
+                    intervalmessage+"b";
+   writeData(socket2,tcpsendData);
+
+  });
+
+});
+
 
 // (1)
 app.post('/input1',function (req,res) {
-  if(pig[0]==undefined){
-    pig[0]=0;
+  if(sstd1==1){
+    tcprule001x=rule_001.rule001x;
+    tcprule001y=rule_001.rule001y;
   }
-  if(pig[1]==undefined){
-    pig[1]=0;
+  if(req.body.range1===undefined){
+      tcprange001=rule_001.range001;
   }
-  if(duck1==1){
-    ruledata[0]=pig[0];
-    ruledata[1]=pig[1];
+  else {
+    tcprange001=req.body.range1;
   }
-  if(duck1!=1){
-    ruledata[0]=rule_001.rule001x;
-    ruledata[1]=rule_001.rule001y;
-  }
-  if(req.body.range1==undefined){
-    rangedata[0]= rule_001.range001;
-  }
-  else{
-    rangedata[0]=req.body.range1;
-  }
-
-  var log1 = new rule001({
-    psrule001x:data_001,
-    psrule001y:data_002,
-    rule001x:pig[0],
-    rule001y:pig[1],
-    range001:rangedata[0]
-  });
-  log1.save(function (err,log1) {
-    //console.log("봐봐 input 이야 :"+log1);
+    var log1 = new rule001({
+      rule001x:tcprule001x,
+      rule001y:tcprule001y,
+      range001:tcprange001
+    });
+    sd=1;
+    res.redirect('/input');
+    log1.save(function (err,log1) {
   });
 
-  if(rangedata[0]<10){
-    rangedata[0]="00"+rangedata[0];
-  }
-  if(rangedata[0]>=10&&rangedata[0]<100){
-    rangedata[0]="0"+rangedata[0];
-  }
-  if(suck1!=1){
-  io.emit('email1');
-	}
-
-  duck1=0;
-  res.redirect('/input');
 });
 
 // (2)
 app.post('/input2',function (req,res) {
-  if(pig[2]==undefined){
-    pig[2]=0;
+  if(sstd2==1){
+    tcprule002x=rule_002.rule002x;
+    tcprule002y=rule_002.rule002y;
   }
-  if(pig[3]==undefined){
-    pig[3]=0;
-  }
-  if(duck2==1){
-    ruledata[2]=pig[2];
-    ruledata[3]=pig[3];
-  }
-  if(duck2!=1){
-  ruledata[2]=rule_002.rule002x;
-  ruledata[3]=rule_002.rule002y;
+if(req.body.range2===undefined){
+    tcprange002=rule_002.range002;
 }
-  if(req.body.range2==undefined){
-    rangedata[1]= rule_002.range002;
-  }
-  else{
-    rangedata[1]=req.body.range2;
-  }
-
-  var log2 = new rule002({
-    rule002x:pig[2],
-    rule002y:pig[3],
-    psrule002x:data_003,
-    psrule002y:data_004,
-    range002:rangedata[1]
-  });
-  log2.save(function (err,log2) {
-
+else {
+  tcprange002=req.body.range2;
+}
+    var log2 = new rule002({
+      rule002x:tcprule002x,
+      rule002y:tcprule002y,
+      range002:tcprange002
+    });
+    sd=1;
+    res.redirect('/input');
+    log2.save(function (err,log2) {
   });
 
-  if(rangedata[1]<10){
-    rangedata[1]="00"+rangedata[1];
-  }
-  if(rangedata[1]>=10&&rangedata[1]<100){
-    rangedata[1]="0"+rangedata[1];
-  }
-
-  if(suck2!=1){
-  io.emit('email2');
-	}
-  duck2=0;
-  res.redirect('/input');
 });
 
 // (3)
 app.post('/input3',function (req,res) {
-  if(pig[4]==undefined){
-    pig[4]=0;
+  if(sstd3==1){
+    tcprule003x=rule_003.rule003x;
+    tcprule003y=rule_003.rule003y;
   }
-  if(pig[5]==undefined){
-    pig[5]=0;
-  }
-  if(duck3==1){
-    ruledata[4]=pig[4];
-    ruledata[5]=pig[5];
-  }
-  if(duck3!=1){
-    ruledata[4]=rule_003.rule003x;
-    ruledata[5]=rule_003.rule003y;
-  }
-  if(req.body.range3==undefined){
-    rangedata[2]= rule_003.range003;
-  }
-  else{
-    rangedata[2]=req.body.range3;
-  }
-
-  var log3 = new rule003({
-    rule003x:pig[4],
-    rule003y:pig[5],
-    psrule003x:data_005,
-    psrule003y:data_006,
-    range003:rangedata[2]
+if(req.body.range3===undefined){
+    tcprange003=rule_003.range003;
+}
+else {
+  tcprange003=req.body.range3;
+}
+    var log3 = new rule003({
+      rule003x:tcprule003x,
+      rule003y:tcprule003y,
+      range003:tcprange003
+    });
+    sd=1;
+    res.redirect('/input');
+    log3.save(function (err,log3) {
   });
-  log3.save(function (err,log3) {
-
-  });
-
-  if(rangedata[2]<10){
-    rangedata[2]="00"+rangedata[2];
-  }
-  if(rangedata[2]>=10&&rangedata[2]<100){
-    rangedata[2]="0"+rangedata[2];
-  }
-
-  if(suck3!=1){
-  io.emit('email3');
-  }
-  duck3=0;
-  res.redirect('/input');
 });
+
 // (4)
 app.post('/input4',function (req,res) {
-  if(pig[6]==undefined){
-    pig[6]=0;
+  if(sstd4==1){
+    tcprule004x=rule_004.rule004x;
+    tcprule004y=rule_004.rule004y;
   }
-  if(pig[7]==undefined){
-    pig[7]=0;
-  }
-  if(duck4==1){
-    ruledata[6]=pig[6];
-    ruledata[7]=pig[7];
-  }
-  if(duck4!=1){
-    ruledata[6]=rule_004.rule004x;
-    ruledata[7]=rule_004.rule004y;
-  }
-  if(req.body.range4==undefined){
-    rangedata[3]= rule_004.range004;
-  }
-  else{
-    rangedata[3]=req.body.range4;
-  }
-
-  var log4 = new rule004({
-    rule004x:pig[6],
-    rule004y:pig[7],
-    psrule004x:data_007,
-    psrule004y:data_008,
-    range004:rangedata[3]
+if(req.body.range4===undefined){
+    tcprange004=rule_004.range004;
+}
+else {
+  tcprange004=req.body.range4;
+}
+    var log4 = new rule004({
+      rule004x:tcprule004x,
+      rule004y:tcprule004y,
+      range004:tcprange004
+    });
+    sd=1;
+    res.redirect('/input');
+    log4.save(function (err,log4) {
   });
-  log4.save(function (err,log4) {
-
-  });
-
-  if(rangedata[3]<10){
-    rangedata[3]="00"+rangedata[3];
-  }
-  if(rangedata[3]>=10&&rangedata[3]<100){
-    rangedata[3]="0"+rangedata[3];
-  }
-
-  if(suck4!=1){
-  io.emit('email4');
-	}
-  duck4=0;
-  res.redirect('/input');
 });
 
 // (5)
 app.post('/input5',function (req,res) {
-  if(pig[8]==undefined){
-    pig[8]=0;
+  if(sstd5==1){
+    tcprule005x=rule_005.rule005x;
+    tcprule005y=rule_005.rule005y;
   }
-  if(pig[9]==undefined){
-    pig[9]=0;
-  }
-  if(duck5==1){
-    ruledata[8]=pig[8];
-    ruledata[9]=pig[9];
-  }
-  if(duck5!=1){
-  ruledata[8]= rule_005.rule005x;
-  ruledata[9]= rule_005.rule005x;
-  }
-  if(req.body.range5==undefined){
-    rangedata[4]= rule_005.range005;
-  }
-  else{
-    rangedata[4]=req.body.range5;
-  }
-
-  var log5 = new rule005({
-    rule005x:pig[8],
-    rule005y:pig[9],
-    psrule005x:data_009,
-    psrule005y:data_010,
-    range005:rangedata[4]
-  });
-  log5.save(function (err,log5) {
-
-  });
-
-  if(rangedata[4]<10){
-    rangedata[4]="00"+rangedata[4];
-  }
-  if(rangedata[4]>=10&&rangedata[4]<100){
-    rangedata[4]="0"+rangedata[4];
-  }
-
-  if(suck5!=1){
-
-  io.emit('email5');
+if(req.body.range5===undefined){
+    tcprange005=rule_005.range005;
 }
-  duck5=0;
-  res.redirect('/input');
+else {
+  tcprange005=req.body.range5;
+}
+    var log5 = new rule005({
+      rule005x:tcprule005x,
+      rule005y:tcprule005y,
+      range005:tcprange005
+    });
+    sd=1;
+    res.redirect('/input');
+    log5.save(function (err,log5) {
+  });
 });
+
 
 
 //################# 기준치 설정 POST END #########################
@@ -1678,7 +1048,7 @@ beaconData.find({}).limit(20).sort({$natural:-1}).exec(function (err,rcdata) {
 
       rule001.find({}).sort('-createdAt').exec(function (err, r001) {
           rule_001=r001[0];
-          if(rule_001==undefined){
+          if(rule_001===undefined){
             rule_001={rule001x:"10",range001:"10"};
           }
           beacon001.find({}).sort('-createdAt').exec(function (err, bc001) {
@@ -1726,7 +1096,7 @@ beaconData.find({}).limit(20).sort({$natural:-1}).exec(function (err,rcdata) {
 
   rule002.find({}).sort('-createdAt').exec(function (err, r002) {
       rule_002=r002[0];
-      if(rule_002==undefined){
+      if(rule_002===undefined){
         rule_002={rule002x:"10",range002:"10"};
       }
       beacon002.find({}).sort('-createdAt').exec(function (err, bc002) {
@@ -1771,7 +1141,7 @@ beaconData.find({}).limit(20).sort({$natural:-1}).exec(function (err,rcdata) {
     dbprevData[19]=rcdata[0];
   rule003.find({}).sort('-createdAt').exec(function (err, r003) {
       rule_003=r003[0];
-      if(rule_003==undefined){
+      if(rule_003===undefined){
         rule_003={rule003x:"10",range003:"10"};
       }
       beacon003.find({}).sort('-createdAt').exec(function (err, bc003) {
@@ -1816,7 +1186,7 @@ beaconData.find({}).limit(20).sort({$natural:-1}).exec(function (err,rcdata) {
     dbprevData[19]=rcdata[0];
   rule004.find({}).sort('-createdAt').exec(function (err, r004) {
       rule_004=r004[0];
-      if(rule_004==undefined){
+      if(rule_004===undefined){
         rule_004={rule004x:"10",range004:"10"};
       }
       beacon004.find({}).sort('-createdAt').exec(function (err, bc004) {
@@ -1862,7 +1232,7 @@ beaconData.find({}).limit(20).sort({$natural:-1}).exec(function (err,rcdata) {
 
   rule005.find({}).sort('-createdAt').exec(function (err, r005) {
       rule_005=r005[0];
-      if(rule_005==undefined){
+      if(rule_005===undefined){
         rule_005={rule005x:"10",range005:"10"};
       }
       beacon005.find({}).sort('-createdAt').exec(function (err, bc005) {

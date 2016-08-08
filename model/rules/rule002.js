@@ -1,8 +1,7 @@
 var mongoose = require('mongoose');
 
 var rule002 ={
-  psrule002x:{type:String},
-  psrule002y:{type:String},
+  
   rule002x:{type:String},
   rule002y:{type:String},
   range002:{type:String},
