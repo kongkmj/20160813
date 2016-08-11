@@ -174,32 +174,32 @@ var server = net.createServer(function (socket) {
 
     var parse1,parse2,parse3,parse4,parse5;
     // (1)
-    if(rule_001.range001!==undefined){
+    if(rule_001.range001===undefined){
       parse1=70;
     }else {
       parse1=rule_001.range001;
     }
     // (2)
-    if(rule_002.range002!==undefined){
+    if(rule_002.range002===undefined){
       parse2=70;
     }else {
       parse2=rule_002.range002;
     }
 
     // (3)
-    if(rule_003.range003!==undefined){
+    if(rule_003.range003===undefined){
       parse3=70;
     }else {
       parse3=rule_003.range003;
     }
     // (4)
-    if(rule_004.range004!==undefined){
+    if(rule_004.range004===undefined){
       parse4=70;
     }else {
       parse4=rule_004.range004;
     }
     // (5)
-    if(rule_005.range005!==undefined){
+    if(rule_005.range005===undefined){
       parse5=70;
     }else {
       parse5=rule_005.range005;
@@ -410,7 +410,7 @@ var notiarr=[noti001,noti002,noti003,noti004,noti005];
                     intervalmessage+"b";
    writeData(socket2,tcpsendData);
   }
-    io.emit('chat message',tcp_R_Data,alaram);
+    io.emit('chat message',tcp_R_Data,alaram,recieveArray);
 
     if(std1==1){
       rule001.find({}).sort('-createdAt').exec(function (err, r001) {

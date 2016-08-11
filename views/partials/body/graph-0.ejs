@@ -217,9 +217,9 @@ socket.on('news',function (alaram,dbprevData) {
 })
 
 
-socket.on('chat message',function (tcp_R_Data,alaram) {
+socket.on('chat message',function (tcp_R_Data,alaram,recieveArray) {
 //console.log(tcp_R_Data);
-
+console.log(recieveArray);
   if(alaram!=""){
     alert_cnt=1;
     color.removeClass("panel-green");

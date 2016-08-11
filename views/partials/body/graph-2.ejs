@@ -6,14 +6,14 @@
                   <h2 class="page-header" >
                     센서 세팅:
                     <% if(data2.rule002x!=undefined) {%>
-                    <%= 'X = '+data2.rule002x %>
+                    <%= 'X = '+(data2.rule002x-90) %>
                     <%}%>
                     <% if(data2.rule002y!=undefined) {%>
-                    <%= 'Y = '+data2.rule002y %>
+                    <%= 'Y = '+(data2.rule002y-90) %>
                     <%}%>
 
                     기준치:
-                    <%=data2.range001%>
+                    <%=data2.range002%>
                   </h2>
 
                   <ol class="breadcrumb">
