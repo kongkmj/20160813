@@ -47,7 +47,7 @@ var sd;
 var tcprule001x,tcprule002x,tcprule003x,tcprule004x,tcprule005x;
 var tcprule001y,tcprule002y,tcprule003y,tcprule004y,tcprule005y;
 var tcprange001,tcprange002,tcprange003,tcprange004,tcprange005;
-
+var datacount;
 
 var server = net.createServer(function (socket) {
 
@@ -58,8 +58,12 @@ var server = net.createServer(function (socket) {
 
   socket2=socket; // socket2라는 그릇에 sockt 정보 담기
 
+  datacount=0;
+
   //디바이스로 부터 데이터 수신시
   socket.on('data',function (data) {
+    datacount=1; 
+
     console.log('Received data from client on port %d: %s',socket.remotePort,data.toString());
     console.log('   Byte recieved: '+socket.byteRead); // 총 수신 데이터
     console.log('   Byte sent : '+socket.bytesWritten);
@@ -103,42 +107,6 @@ var server = net.createServer(function (socket) {
     }
 //수신데이터 민감도가 다를경우 카운터
      falsecount=0;
-/*
-
-    //parsing한 tcp_R_Data를 그래프표현을 위해 필터링
-    tcp_R_ChData[0]=tcp_R_Data[0];
-    tcp_R_ChData[1]=tcp_R_Data[1];
-    tcp_R_ChData[2]=tcp_R_Data[3];
-    tcp_R_ChData[3]=tcp_R_Data[4];
-    tcp_R_ChData[4]=tcp_R_Data[6];
-    tcp_R_ChData[5]=tcp_R_Data[7];
-    tcp_R_ChData[6]=tcp_R_Data[9];
-    tcp_R_ChData[7]=tcp_R_Data[10];
-    tcp_R_ChData[8]=tcp_R_Data[12];
-    tcp_R_ChData[9]=tcp_R_Data[13];
-
-    for(var cnt=0;cnt<tcp_R_ChData.length;cnt++){
-      if(tcp_R_ChData[cnt]<90){
-        tcp_R_ChData[cnt]= -tcp_R_ChData[cnt];
-      }
-      else if(tcp_R_ChData[cnt]>=90){
-        if(tcp_R_ChData[cnt]>180){
-          tcp_R_ChData[cnt]=90;
-        }
-        else{
-          tcp_R_ChData[cnt]-=90;
-        }
-      }
-    }
-
-    rcrule[0]=tcp_R_Data[2];
-    rcrule[1]=tcp_R_Data[5];
-    rcrule[2]=tcp_R_Data[8];
-    rcrule[3]=tcp_R_Data[11];
-    rcrule[4]=tcp_R_Data[14];
-
-    rcinterval = tcp_R_Data[15];
-*/
 
     //수신 데이터 저장 이전그래프를 띄위기위해
     var beacon_Data = new beaconData({
@@ -309,7 +277,9 @@ var notiarr=[noti001,noti002,noti003,noti004,noti005];
         beacony:tcp_R_Data[1]
       });
       console.log("1번 비콘 경고 받음");
+    log1.save(function (err,log1){
 
+    });	
   }
 
   // (2) 알림
@@ -649,6 +619,18 @@ app.use(express.static(path.join(__dirname, 'public')));// 정적폴더 세팅
 
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@ mapping 관련 START @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+setInterval(function(){
+ if(alaram!==""){
+ if(datacount==1){
+  datacount=0;
+}else if(datacount!=1){
+ console.log("알람후 데이터 쐇다");
+ writeData(socket2,'std');
+ }
+}
+},1000*5);
+
 
 //##################### 접속 첫 페이지 ########################
 
